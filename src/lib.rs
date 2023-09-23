@@ -1,47 +1,73 @@
+//! Safe way to allocate and initialize nested arrays directly on the heap inside a `Box`.
+//!
+//! ## Usage
+//!
+//! In order to initialize a Boxed nested-array, simply call the `boxarray` function and give it the value (here `v`) to initialize with:
+//! ```
+//!   let v = 7.0;
+//!   let a: Box<[[[f64; 10]; 2]; 4]> = boxarray::boxarray(v);
+//! ```
 use std::{
     alloc::{alloc_zeroed, Layout},
     marker::PhantomData,
     mem::transmute,
 };
 
-pub trait Nat {}
-pub struct Z {}
-impl Nat for Z {}
-pub struct S<N: Nat> {
-    _s: PhantomData<N>,
-}
-impl<N: Nat> Nat for S<N> {}
-type N1 = S<Z>;
-type N2 = S<N1>;
-type N3 = S<N2>;
-type N4 = S<N3>;
-type N5 = S<N4>;
-type N6 = S<N5>;
-type N7 = S<N6>;
-type N8 = S<N7>;
-type N9 = S<N8>;
-type N10 = S<N9>;
+/// Type-level const usize list.
+pub trait CUList {}
 
-pub trait Fin<N: Nat> {}
-pub struct FZ {}
-impl<N: Nat> Fin<N> for FZ {}
-pub struct FS<N: Nat, F: Fin<N>> {
-    _n: PhantomData<N>,
-    _f: PhantomData<F>,
-}
-impl<N: Nat, F: Fin<N>> Fin<S<N>> for FS<N, F> {}
+/// Single element constructor for `CUList`.
+pub struct Single<const N: usize> {}
+impl<const N: usize> CUList for Single<N> {}
 
-type MaxSize = N10;
-pub trait Arrays<E, FN: Fin<MaxSize>> {}
-impl<E: Copy, const N: usize> Arrays<E, FZ> for [E; N] {}
-impl<E: Copy, N: Nat, FN: Fin<MaxSize> + Fin<N>, A: Arrays<E, FN>, const S: usize>
-    Arrays<E, FS<N, FN>> for [A; S]
-where
-    FS<N, FN>: Fin<MaxSize>,
-{
+/// Concatenation constructor for `CUList`.
+pub struct Cons<L: CUList, const N: usize> {
+    _l: PhantomData<L>,
 }
+impl<L: CUList, const N: usize> CUList for Cons<L, N> {}
 
-pub fn boxarray<FN: Fin<MaxSize>, T: Arrays<E, FN>, E: Copy>(e: E) -> Box<T> {
+/// Constrains valid nested arrays.
+pub trait Arrays<E, L: CUList> {}
+impl<T: Copy, const N: usize> Arrays<T, Single<N>> for [T; N] {}
+impl<T: Copy, L: CUList, A: Arrays<T, L>, const N: usize> Arrays<T, Cons<L, N>> for [A; N] {}
+
+/// The `boxarray` function allow to allocate and initialize nested arrays directly on the heap inside a `Box`.
+///
+/// # Examples
+///
+/// Single array.
+/// ```
+/// fn signle_array() {
+///     let a: Box<[u32; 10]> = boxarray::boxarray(1);
+///     assert_eq!(*a, [1u32; 10]);
+/// }
+/// ```
+///
+/// Nested array.
+/// ```
+/// fn nested_array() {
+///     let a: Box<[[[f64; 10]; 2]; 4]> = boxarray::boxarray(7.0);
+///     assert_eq!(*a, [[[7f64; 10]; 2]; 4]);
+/// }
+/// ```
+///
+/// If the type of the value to initialize with does not correspond, a compiler will be raised.
+/// ```compile_fail
+/// fn nested_array_wrong_type() {
+///     let a: Box<[[[f64; 10]; 2]; 4]> = boxarray::boxarray(7.0f32);
+///     assert_eq!(*a, [[[7f64; 10]; 2]; 4]);
+/// }
+/// ```
+///
+/// If the type to initialize is not only composed of nested arrays, a compiler will be raised.
+/// ```compile_fail
+/// fn nested_array_wrong_type() {
+///     let a: Box<[[([f64; 10], [f64; 10]); 2]; 4]> = boxarray::boxarray(7.0);
+///     assert_eq!(*a, [[[7f64; 10]; 2]; 4]);
+/// }
+/// ```
+///
+pub fn boxarray<E: Copy, L: CUList, T: Arrays<E, L>>(e: E) -> Box<T> {
     unsafe {
         let ptr = alloc_zeroed(Layout::new::<T>());
         let st = std::mem::size_of::<T>();
