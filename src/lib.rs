@@ -5,7 +5,7 @@
 //! In order to initialize a Boxed nested-array, simply call the `boxarray` function and give it the value (here `v`) to initialize with:
 //! ```
 //!   let v = 7.0;
-//!   let a: Box<[[[f64; 10]; 2]; 4]> = boxarray::boxarray(v);
+//!   let a: Box<[[[f64; 3]; 2]; 4]> = boxarray::boxarray(v);
 //! ```
 use std::{
     alloc::{alloc_zeroed, Layout},
