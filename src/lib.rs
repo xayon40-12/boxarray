@@ -13,23 +13,23 @@ use std::{
     mem::transmute,
 };
 
-/// Type-level const usize list.
+/// Type-level list of const generic usize.
 pub trait CUList {}
 
-/// Single element constructor for `CUList`.
+/// Single element constructor for `CUList`. Represend the size a single non-nested array.
 pub struct Single<const N: usize> {}
 impl<const N: usize> CUList for Single<N> {}
 
-/// Concatenation constructor for `CUList`.
-pub struct Cons<L: CUList, const N: usize> {
+/// Append element constructor for `CUList`. Represent the size of the out-most array, where the list `L` correspond to the sizes of the nested arrays.
+pub struct Nest<L: CUList, const N: usize> {
     _l: PhantomData<L>,
 }
-impl<L: CUList, const N: usize> CUList for Cons<L, N> {}
+impl<L: CUList, const N: usize> CUList for Nest<L, N> {}
 
 /// Constrains valid nested arrays.
 pub trait Arrays<E, L: CUList> {}
 impl<T: Copy, const N: usize> Arrays<T, Single<N>> for [T; N] {}
-impl<T: Copy, L: CUList, A: Arrays<T, L>, const N: usize> Arrays<T, Cons<L, N>> for [A; N] {}
+impl<T: Copy, L: CUList, A: Arrays<T, L>, const N: usize> Arrays<T, Nest<L, N>> for [A; N] {}
 
 /// The `boxarray` function allow to allocate and initialize nested arrays directly on the heap inside a `Box`.
 ///
