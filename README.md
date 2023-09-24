@@ -1,6 +1,6 @@
 # boxarray
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/xayon40-12/boxarray/rust.yml?label=build/tests&logo=github)](https://github.com/xayon40-12/boxarray/actions)
-[![Crates.io](https://img.shields.io/crates/d/boxarray)](https://crates.io/crates/boxarray)
+[![Crates.io](https://img.shields.io/crates/v/boxarray.svg)](https://crates.io/crates/boxarray)
 [![Docs.rs](https://docs.rs/boxarray/badge.svg)](https://docs.rs/boxarray)
 
 Safe way to allocate and initialize nested arrays directly on the heap in Rust.  
