@@ -1,6 +1,7 @@
-# boxarray.rs
+# boxarray.rs  
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/xayon40-12/boxarray/rust.yml?label=build/tests&logo=github)  
 
-Safe way to allocate and initialize nested arrays directly on the heap in Rust.
+Safe way to allocate and initialize nested arrays directly on the heap in Rust.  
 
 ## Usage
 
