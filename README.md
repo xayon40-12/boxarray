@@ -1,6 +1,6 @@
-# boxarray
+# boxarray.rs
 
-Safe way to allocate and initialize nested arrays directly on the heap inside a `Box`.
+Safe way to allocate and initialize nested arrays directly on the heap in Rust.
 
 ## Usage
 
