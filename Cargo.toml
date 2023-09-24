@@ -1,6 +1,6 @@
 [package]
 name = "boxarray"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["Nathan Touroux"]
 description = "Safe way to allocate and initialize nested arrays directly on the heap in Rust."
