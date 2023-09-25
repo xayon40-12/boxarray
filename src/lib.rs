@@ -16,24 +16,32 @@ use std::{
 /// Type-level list of const generic usize.
 pub trait CUList {}
 
-/// Single element constructor for `CUList`. Represend the size a single non-nested array.
-pub struct Single<const N: usize> {}
-impl<const N: usize> CUList for Single<N> {}
+/// Value constructor for `CUList`. Represend a single value not in an array.
+pub struct Value {}
+impl CUList for Value {}
 
-/// Append element constructor for `CUList`. Represent the size of the out-most array, where the list `L` correspond to the sizes of the nested arrays.
-pub struct Nest<L: CUList, const N: usize> {
+/// Array constructor for `CUList`. Represent the outter-most array that contains the other nested arrays and its own size.
+pub struct Array<L: CUList, const N: usize> {
     _l: PhantomData<L>,
 }
-impl<L: CUList, const N: usize> CUList for Nest<L, N> {}
+impl<L: CUList, const N: usize> CUList for Array<L, N> {}
 
 /// Constrains valid nested arrays.
 pub trait Arrays<E, L: CUList> {}
-impl<T: Copy, const N: usize> Arrays<T, Single<N>> for [T; N] {}
-impl<T: Copy, L: CUList, A: Arrays<T, L>, const N: usize> Arrays<T, Nest<L, N>> for [A; N] {}
+impl<T: Copy> Arrays<T, Value> for T {}
+impl<T: Copy, L: CUList, A: Arrays<T, L>, const N: usize> Arrays<T, Array<L, N>> for [A; N] {}
 
 /// The `boxarray` function allow to allocate and initialize nested arrays directly on the heap inside a `Box`.
 ///
 /// # Examples
+///
+/// Zero-size array (i.e. a simple value)
+/// ```
+/// fn signle_array() {
+///     let a: Box<u32> = boxarray::boxarray(1);
+///     assert_eq!(*a, 1u32);
+/// }
+/// ```
 ///
 /// Single array.
 /// ```
