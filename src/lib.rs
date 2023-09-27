@@ -9,27 +9,31 @@
 //! ```
 use std::{
     alloc::{alloc_zeroed, Layout},
-    marker::PhantomData,
     mem::transmute,
 };
 
-/// Type-level list of const generic usize.
-pub trait CUList {}
+mod private {
+    use std::marker::PhantomData;
 
-/// Value constructor for `CUList`. Represend a single value not in an array.
-pub struct Value {}
-impl CUList for Value {}
+    /// Type-level list of const generic usize.
+    pub trait CUList {}
 
-/// Array constructor for `CUList`. Represent the outter-most array that contains the other nested arrays and its own size.
-pub struct Array<L: CUList, const N: usize> {
-    _l: PhantomData<L>,
+    /// Value constructor for `CUList`. Represend a single value not in an array.
+    pub struct Value {}
+    impl CUList for Value {}
+
+    /// Array constructor for `CUList`. Represent the outter-most array that contains the other nested arrays and its own size.
+    pub struct Array<L: CUList, const N: usize> {
+        _l: PhantomData<L>,
+    }
+    impl<L: CUList, const N: usize> CUList for Array<L, N> {}
+
+    /// Constrains valid nested arrays.
+    pub trait Arrays<E, L: CUList> {}
+    impl<T: Copy> Arrays<T, Value> for T {}
+    impl<T: Copy, L: CUList, A: Arrays<T, L>, const N: usize> Arrays<T, Array<L, N>> for [A; N] {}
 }
-impl<L: CUList, const N: usize> CUList for Array<L, N> {}
-
-/// Constrains valid nested arrays.
-pub trait Arrays<E, L: CUList> {}
-impl<T: Copy> Arrays<T, Value> for T {}
-impl<T: Copy, L: CUList, A: Arrays<T, L>, const N: usize> Arrays<T, Array<L, N>> for [A; N] {}
+use private::*;
 
 /// The `boxarray` function allow to allocate and initialize nested arrays directly on the heap inside a `Box`.
 ///
