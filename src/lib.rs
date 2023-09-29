@@ -28,10 +28,36 @@ mod private {
     }
     impl<L: CUList, const N: usize> CUList for Array<L, N> {}
 
+    pub trait Reify<T> {
+        fn reify() -> T;
+    }
+
+    impl Reify<usize> for Value {
+        fn reify() -> usize {
+            0
+        }
+    }
+    impl<L: CUList + Reify<usize>, const N: usize> Reify<usize> for Array<L, N> {
+        fn reify() -> usize {
+            1 + L::reify()
+        }
+    }
+
+    impl Reify<()> for Value {
+        fn reify() -> () {
+            ()
+        }
+    }
+    impl<T, L: CUList + Reify<T>, const N: usize> Reify<(usize, T)> for Array<L, N> {
+        fn reify() -> (usize, T) {
+            (N, L::reify())
+        }
+    }
+
     /// Constrains valid nested arrays.
     pub trait Arrays<E, L: CUList> {}
-    impl<T: Copy> Arrays<T, Value> for T {}
-    impl<T: Copy, L: CUList, A: Arrays<T, L>, const N: usize> Arrays<T, Array<L, N>> for [A; N] {}
+    impl<E> Arrays<E, Value> for E {}
+    impl<E, L: CUList, A: Arrays<E, L>, const N: usize> Arrays<E, Array<L, N>> for [A; N] {}
 }
 use private::*;
 
@@ -79,10 +105,10 @@ use private::*;
 /// }
 /// ```
 ///
-pub fn boxarray<E: Copy, L: CUList, T: Arrays<E, L>>(e: E) -> Box<T> {
+pub fn boxarray<E: Copy, L: CUList, A: Arrays<E, L>>(e: E) -> Box<A> {
     unsafe {
-        let ptr = alloc_zeroed(Layout::new::<T>());
-        let st = std::mem::size_of::<T>();
+        let ptr = alloc_zeroed(Layout::new::<A>());
+        let st = std::mem::size_of::<A>();
         let se = std::mem::size_of::<E>();
         assert!(st % se == 0);
         let n = st / se;
