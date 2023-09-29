@@ -16,18 +16,26 @@ mod private {
     use std::marker::PhantomData;
 
     /// Type-level list of const generic usize.
-    pub trait CUList {}
+    pub trait CUList {
+        type CoordType;
+    }
+    type CoordType<A> = <A as CUList>::CoordType;
 
     /// Value constructor for `CUList`. Represend a single value not in an array.
     pub struct Value {}
-    impl CUList for Value {}
+    impl CUList for Value {
+        type CoordType = ();
+    }
 
     /// Array constructor for `CUList`. Represent the outter-most array that contains the other nested arrays and its own size.
     pub struct Array<L: CUList, const N: usize> {
         _l: PhantomData<L>,
     }
-    impl<L: CUList, const N: usize> CUList for Array<L, N> {}
+    impl<L: CUList, const N: usize> CUList for Array<L, N> {
+        type CoordType = (usize, L::CoordType);
+    }
 
+    /// Convert the impl type to a value of type `T`.
     pub trait Reify<T> {
         fn reify() -> T;
     }
@@ -43,13 +51,15 @@ mod private {
         }
     }
 
-    impl Reify<()> for Value {
-        fn reify() -> () {
+    impl Reify<CoordType<Value>> for Value {
+        fn reify() -> CoordType<Value> {
             ()
         }
     }
-    impl<T, L: CUList + Reify<T>, const N: usize> Reify<(usize, T)> for Array<L, N> {
-        fn reify() -> (usize, T) {
+    impl<L: CUList + Reify<CoordType<L>>, const N: usize> Reify<CoordType<Array<L, N>>>
+        for Array<L, N>
+    {
+        fn reify() -> CoordType<Array<L, N>> {
             (N, L::reify())
         }
     }
