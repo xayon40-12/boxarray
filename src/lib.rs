@@ -7,6 +7,12 @@
 //!   let v = 7.0;
 //!   let a: Box<[[[f64; 3]; 2]; 4]> = boxarray::boxarray(v);
 //! ```
+//!
+//! The initialization can also be done with a function that takes the coordinates in nested tuples as arguments by using `boxarray_` instead:
+//! ```
+//!   let f = |((((), i), j), k)| (i+j*k) as usize;
+//!   let a: Box<[[[usize; 3]; 2]; 4]> = boxarray::boxarray_(f);
+//! ```
 use std::{
     alloc::{alloc_zeroed, Layout},
     mem::transmute,
@@ -19,7 +25,8 @@ mod private {
     pub trait CUList {
         type CoordType;
     }
-    type CoordType<A> = <A as CUList>::CoordType;
+    /// Type operator that return the CoordType of o CUList, which is a type representing nested tuple of usize, where the number of nesting is the same as the number of array nesting the CUList represent.
+    pub type CoordType<A> = <A as CUList>::CoordType;
 
     /// Value constructor for `CUList`. Represend a single value not in an array.
     pub struct Value {}
@@ -32,7 +39,7 @@ mod private {
         _l: PhantomData<L>,
     }
     impl<L: CUList, const N: usize> CUList for Array<L, N> {
-        type CoordType = (usize, L::CoordType);
+        type CoordType = (L::CoordType, usize);
     }
 
     /// Convert the impl type to a value of type `T`.
@@ -60,7 +67,40 @@ mod private {
         for Array<L, N>
     {
         fn reify() -> CoordType<Array<L, N>> {
-            (N, L::reify())
+            (L::reify(), N)
+        }
+    }
+
+    /// Product for recursive types
+    pub trait Product<T> {
+        fn product() -> T;
+    }
+    impl Product<usize> for Value {
+        fn product() -> usize {
+            1
+        }
+    }
+    impl<L: CUList + Product<usize>, const N: usize> Product<usize> for Array<L, N> {
+        fn product() -> usize {
+            N * L::product()
+        }
+    }
+
+    pub trait IndexCoord<L: CUList> {
+        fn coords(i: usize) -> CoordType<L>;
+    }
+    impl IndexCoord<Value> for Value {
+        fn coords(_: usize) -> CoordType<Value> {
+            ()
+        }
+    }
+    impl<L: CUList + IndexCoord<L> + Product<usize>, const N: usize> IndexCoord<Array<L, N>>
+        for Array<L, N>
+    {
+        fn coords(i: usize) -> CoordType<Array<L, N>> {
+            let prod = L::product();
+
+            (L::coords(i % prod), i / prod)
         }
     }
 
@@ -68,10 +108,30 @@ mod private {
     pub trait Arrays<E, L: CUList> {}
     impl<E> Arrays<E, Value> for E {}
     impl<E, L: CUList, A: Arrays<E, L>, const N: usize> Arrays<E, Array<L, N>> for [A; N] {}
+
+    pub trait Initialize<E, L: CUList> {
+        fn initialize(s: &Self, i: usize) -> E;
+    }
+    impl<E: Clone> Initialize<E, Value> for E {
+        fn initialize(e: &Self, _: usize) -> E {
+            e.clone()
+        }
+    }
+    impl<
+            E,
+            L: CUList + IndexCoord<Array<L, N>>,
+            F: Fn(CoordType<Array<L, N>>) -> E,
+            const N: usize,
+        > Initialize<E, Array<L, N>> for F
+    {
+        fn initialize(f: &Self, i: usize) -> E {
+            f(L::coords(i))
+        }
+    }
 }
 use private::*;
 
-/// The `boxarray` function allow to allocate and initialize nested arrays directly on the heap inside a `Box`.
+/// The `boxarray` function allow to allocate nested arrays directly on the heap inside a `Box` and initialize it with a constant value of type `E`.
 ///
 /// # Examples
 ///
@@ -103,7 +163,6 @@ use private::*;
 /// ```compile_fail
 /// fn nested_array_wrong_type() {
 ///     let a: Box<[[[f64; 10]; 2]; 4]> = boxarray::boxarray(7.0f32);
-///     assert_eq!(*a, [[[7f64; 10]; 2]; 4]);
 /// }
 /// ```
 ///
@@ -111,7 +170,6 @@ use private::*;
 /// ```compile_fail
 /// fn nested_array_wrong_type() {
 ///     let a: Box<[[([f64; 10], [f64; 10]); 2]; 4]> = boxarray::boxarray(7.0);
-///     assert_eq!(*a, [[[7f64; 10]; 2]; 4]);
 /// }
 /// ```
 ///
@@ -125,6 +183,71 @@ pub fn boxarray<E: Copy, L: CUList, A: Arrays<E, L>>(e: E) -> Box<A> {
         let arr: *mut E = transmute(ptr);
         for i in 0..n {
             *arr.add(i) = e;
+        }
+        std::mem::transmute(ptr)
+    }
+}
+
+/// Same as `boxarray` but use a fonction that takes nested tuples of `usize` as coordinates and return a value of type `E` to initialize every cells.
+///
+/// # Examples
+///
+/// Zero-size array (i.e. a simple value)
+/// ```
+/// fn signle_array() {
+///     let a: Box<u32> = boxarray::boxarray_(|()| 1);
+///     assert_eq!(*a, 1u32);
+/// }
+/// ```
+///
+/// Single array.
+/// ```
+/// fn signle_array() {
+///     let a: Box<[u32; 4]> = boxarray::boxarray_(|((),i)| i as  u32);
+///     assert_eq!(*a, [0,1,2,3]);
+/// }
+/// ```
+///
+/// Nested array.
+/// ```
+/// fn nested_array() {
+///     let a: Box<[[[i32; 3]; 2]; 4]> = boxarray::boxarray_(|((((),i),j),k)| (i+j*k) as i32);
+///     let mut sol = [[[0i32; 3]; 2]; 4];
+///     for k in 0..4 {
+///         for j in 0..2 {
+///             for i in 0..3 {
+///                 sol[k][j][i] = (i+j*k) as i32;
+///             }
+///         }
+///     }
+///     assert_eq!(*a, sol);
+/// }
+/// ```
+///
+/// Fails to compile when the number of coordinates are not the same as the dimension of the nested arrays.
+/// ```compile_fail
+/// fn nested_array() {
+///     let a: Box<[[[i32; 3]; 2]; 4]> = boxarray::boxarray_(|(((),i),j)| i as i32);
+/// }
+/// ```
+/// ```compile_fail
+/// fn nested_array() {
+///     let a: Box<[[[i32; 3]; 2]; 4]> = boxarray::boxarray_(|(((((),i),j),k),l)| i as i32);
+/// }
+/// ```
+///
+pub fn boxarray_<E: Copy, L: CUList + IndexCoord<L>, A: Arrays<E, L>, F: Fn(CoordType<L>) -> E>(
+    f: F,
+) -> Box<A> {
+    unsafe {
+        let ptr = alloc_zeroed(Layout::new::<A>());
+        let st = std::mem::size_of::<A>();
+        let se = std::mem::size_of::<E>();
+        assert!(st % se == 0);
+        let n = st / se;
+        let arr: *mut E = transmute(ptr);
+        for i in 0..n {
+            *arr.add(i) = f(L::coords(i));
         }
         std::mem::transmute(ptr)
     }
