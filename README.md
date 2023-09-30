@@ -10,11 +10,12 @@ Safe way to allocate and initialize nested arrays directly on the heap in Rust.
 To use `boxarray` in your Rust project, simply add it as a dependency in your `Cargo.toml`:
 ```toml
 [dependencies]
-boxarray = "2.0.0"
+boxarray = "1.2.0"
 ```
 Then import and use it in your project:
 ```rust
   use boxarray::boxarray;
+  use boxarray::boxarray_;
 
   fn main() {
     let v = 7.0;
@@ -22,7 +23,7 @@ Then import and use it in your project:
     println!("{a:?}");
 
     let f = |((((), i), j), k)| (i+j*k) as usize;
-    let a: Box<[[[usize; 3]; 2]; 4]> = boxarray::boxarray_(f);
+    let a: Box<[[[usize; 3]; 2]; 4]> = boxarray::boxarray(f);
     println!("{a:?}");
 }
 ```
