@@ -178,13 +178,12 @@ pub fn boxarray<E: Copy, L: CUList, A: Arrays<E, L>>(e: E) -> Box<A> {
         let ptr = alloc_zeroed(Layout::new::<A>());
         let st = std::mem::size_of::<A>();
         let se = std::mem::size_of::<E>();
-        assert!(st % se == 0);
         let n = st / se;
         let arr: *mut E = transmute(ptr);
         for i in 0..n {
             *arr.add(i) = e;
         }
-        std::mem::transmute(ptr)
+        Box::from_raw(std::mem::transmute(ptr))
     }
 }
 
@@ -243,12 +242,11 @@ pub fn boxarray_<E: Copy, L: CUList + IndexCoord<L>, A: Arrays<E, L>, F: Fn(Coor
         let ptr = alloc_zeroed(Layout::new::<A>());
         let st = std::mem::size_of::<A>();
         let se = std::mem::size_of::<E>();
-        assert!(st % se == 0);
         let n = st / se;
         let arr: *mut E = transmute(ptr);
         for i in 0..n {
             *arr.add(i) = f(L::coords(i));
         }
-        std::mem::transmute(ptr)
+        Box::from_raw(std::mem::transmute(ptr))
     }
 }
