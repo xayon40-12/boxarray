@@ -130,6 +130,7 @@ mod private {
     }
 }
 use private::*;
+pub use private::{Array, Value};
 
 /// The `boxarray` function allow to allocate nested arrays directly on the heap inside a `Box` and initialize it with a constant value of type `E`.
 ///
