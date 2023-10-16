@@ -174,7 +174,7 @@ pub use private::{Array, Value};
 /// }
 /// ```
 ///
-pub fn boxarray<E: Copy, L: CUList, A: Arrays<E, L>>(e: E) -> Box<A> {
+pub fn boxarray<E: Clone, L: CUList, A: Arrays<E, L>>(e: E) -> Box<A> {
     unsafe {
         let ptr = alloc_zeroed(Layout::new::<A>());
         let st = std::mem::size_of::<A>();
@@ -182,7 +182,7 @@ pub fn boxarray<E: Copy, L: CUList, A: Arrays<E, L>>(e: E) -> Box<A> {
         let n = st / se;
         let arr: *mut E = transmute(ptr);
         for i in 0..n {
-            *arr.add(i) = e;
+            *arr.add(i) = e.clone();
         }
         Box::from_raw(std::mem::transmute(ptr))
     }
@@ -236,7 +236,7 @@ pub fn boxarray<E: Copy, L: CUList, A: Arrays<E, L>>(e: E) -> Box<A> {
 /// }
 /// ```
 ///
-pub fn boxarray_<E: Copy, L: CUList + IndexCoord<L>, A: Arrays<E, L>, F: Fn(CoordType<L>) -> E>(
+pub fn boxarray_<E, L: CUList + IndexCoord<L>, A: Arrays<E, L>, F: Fn(CoordType<L>) -> E>(
     f: F,
 ) -> Box<A> {
     unsafe {
