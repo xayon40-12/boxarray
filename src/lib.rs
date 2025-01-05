@@ -177,12 +177,14 @@ pub use private::{Array, Value};
 pub fn boxarray<E: Clone, L: CUList, A: Arrays<E, L>>(e: E) -> Box<A> {
     unsafe {
         let ptr = alloc_zeroed(Layout::new::<A>());
-        let st = std::mem::size_of::<A>();
         let se = std::mem::size_of::<E>();
-        let n = st / se;
-        let arr: *mut E = transmute(ptr);
-        for i in 0..n {
-            *arr.add(i) = e.clone();
+        if se != 0 {
+            let st = std::mem::size_of::<A>();
+            let n = st / se;
+            let arr: *mut E = transmute(ptr);
+            for i in 0..n {
+                *arr.add(i) = e.clone();
+            }
         }
         Box::from_raw(std::mem::transmute(ptr))
     }
@@ -241,12 +243,14 @@ pub fn boxarray_<E, L: CUList + IndexCoord<L>, A: Arrays<E, L>, F: Fn(CoordType<
 ) -> Box<A> {
     unsafe {
         let ptr = alloc_zeroed(Layout::new::<A>());
-        let st = std::mem::size_of::<A>();
         let se = std::mem::size_of::<E>();
-        let n = st / se;
-        let arr: *mut E = transmute(ptr);
-        for i in 0..n {
-            *arr.add(i) = f(L::coords(i));
+        if se != 0 {
+            let st = std::mem::size_of::<A>();
+            let n = st / se;
+            let arr: *mut E = transmute(ptr);
+            for i in 0..n {
+                *arr.add(i) = f(L::coords(i));
+            }
         }
         Box::from_raw(std::mem::transmute(ptr))
     }
