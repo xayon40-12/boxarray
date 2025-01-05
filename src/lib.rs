@@ -108,26 +108,6 @@ mod private {
     pub trait Arrays<E, L: CUList> {}
     impl<E> Arrays<E, Value> for E {}
     impl<E, L: CUList, A: Arrays<E, L>, const N: usize> Arrays<E, Array<L, N>> for [A; N] {}
-
-    pub trait Initialize<E, L: CUList> {
-        fn initialize(s: &Self, i: usize) -> E;
-    }
-    impl<E: Clone> Initialize<E, Value> for E {
-        fn initialize(e: &Self, _: usize) -> E {
-            e.clone()
-        }
-    }
-    impl<
-            E,
-            L: CUList + IndexCoord<Array<L, N>>,
-            F: Fn(CoordType<Array<L, N>>) -> E,
-            const N: usize,
-        > Initialize<E, Array<L, N>> for F
-    {
-        fn initialize(f: &Self, i: usize) -> E {
-            f(L::coords(i))
-        }
-    }
 }
 use private::*;
 pub use private::{Array, Value};
@@ -157,6 +137,16 @@ pub use private::{Array, Value};
 /// fn nested_array() {
 ///     let a: Box<[[[f64; 10]; 2]; 4]> = boxarray::boxarray(7.0);
 ///     assert_eq!(*a, [[[7f64; 10]; 2]; 4]);
+/// }
+/// ```
+///
+/// Zero sized type.
+/// ```
+/// fn zero_sized_type() {
+///     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+///     struct ZST;
+///     let a: Box<[[[ZST; 10]; 2]; 4]> = boxarray::boxarray(ZST);
+///     assert_eq!(*a, [[[ZST; 10]; 2]; 4]);
 /// }
 /// ```
 ///
