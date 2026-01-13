@@ -173,7 +173,7 @@ pub fn boxarray<E: Clone, L: CUList, A: Arrays<E, L>>(e: E) -> Box<A> {
             let n = st / se;
             let arr: *mut E = transmute(ptr);
             for i in 0..n {
-                *arr.add(i) = e.clone();
+                std::ptr::write(arr.add(i), e.clone());
             }
         }
         Box::from_raw(std::mem::transmute(ptr))
@@ -239,7 +239,7 @@ pub fn boxarray_<E, L: CUList + IndexCoord<L>, A: Arrays<E, L>, F: Fn(CoordType<
             let n = st / se;
             let arr: *mut E = transmute(ptr);
             for i in 0..n {
-                *arr.add(i) = f(L::coords(i));
+                std::ptr::write(arr.add(i), f(L::coords(i)));
             }
         }
         Box::from_raw(std::mem::transmute(ptr))
