@@ -14,7 +14,7 @@
 //!   let a: Box<[[[usize; 3]; 2]; 4]> = boxarray::boxarray_(f);
 //! ```
 use std::{
-    alloc::{Layout, alloc},
+    alloc::{alloc, Layout},
     mem::transmute,
 };
 
@@ -40,35 +40,6 @@ mod private {
     }
     impl<L: CUList, const N: usize> CUList for Array<L, N> {
         type CoordType = (L::CoordType, usize);
-    }
-
-    /// Convert the impl type to a value of type `T`.
-    pub trait Reify<T> {
-        fn reify() -> T;
-    }
-
-    impl Reify<usize> for Value {
-        fn reify() -> usize {
-            0
-        }
-    }
-    impl<L: CUList + Reify<usize>, const N: usize> Reify<usize> for Array<L, N> {
-        fn reify() -> usize {
-            1 + L::reify()
-        }
-    }
-
-    impl Reify<CoordType<Value>> for Value {
-        fn reify() -> CoordType<Value> {
-            ()
-        }
-    }
-    impl<L: CUList + Reify<CoordType<L>>, const N: usize> Reify<CoordType<Array<L, N>>>
-        for Array<L, N>
-    {
-        fn reify() -> CoordType<Array<L, N>> {
-            (L::reify(), N)
-        }
     }
 
     /// Product for recursive types
